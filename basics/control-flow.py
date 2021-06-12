@@ -29,7 +29,8 @@ for item in list:
 
 
 boys = [ "tommy", "billy", "moti" ]
+
 for boy in boys:
-    if(boy == "billy"):
-        boy = "bolly"
+    if boy == "tommy":
+        del boys[0]  
     print(boy)
