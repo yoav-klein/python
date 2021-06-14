@@ -14,3 +14,7 @@ def fibonacci2(num):
         result.append(a)
         a, b = b, a + b
     return result
+
+if __name__ == "__main__":
+    import sys
+    fibonacci(int(sys.argv[1]))
