@@ -1,5 +1,19 @@
 
-import foo.bar
+# --- simple way to import a module from a package -----
+# import animals.mamals.lion
 
-foo.bar.say_hi()
+# animals.mamals.lion.f_lion()
+
+# ----- import with from -------
+# from animals.mamals import lion
+
+# lion.f_lion()
+
+# ----- the mamals package has a __init__.py that defines
+#   the __all__ list
+
+from animals.mamals import *
+
+human.f_human()
+lion.f_lion()
 
