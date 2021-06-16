@@ -48,3 +48,17 @@ with open("phones.txt", "w") as phones:
 import json
 with open('phones.json', 'w') as phone_json:
     json.dump(table, phone_json)
+
+
+### repr
+
+class Person:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+    
+    def __repr__(self):
+        return f"My name is {self.name} and I'm {self.age} years old"
+
+yoav = Person("Yoav", 34)
+print(repr(yoav))

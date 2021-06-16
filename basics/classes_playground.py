@@ -43,3 +43,26 @@ class A:
 a = A(12)
 a.method()
 A.func()
+
+def function():
+    print("function")
+
+x = A(12)
+x.extra_function = function
+x.extra_function()
+
+
+
+## Adding attributes to instance object
+class Fifi:
+    def fifo():
+        pass
+
+f = Fifi()
+f.some_data = 3
+
+def function():
+    print("function")
+
+f.some_function = function
+f.some_function()
