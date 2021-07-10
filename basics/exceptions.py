@@ -39,10 +39,16 @@ except Base:
     print("Base caught!")
 
 # print("------ exception chaining ------")
-# try: 
-#     this_fails()
-# except Base as b:
-#     raise IOError from b
+def chain():
+    try: 
+        raise OSError("What a problem that is..")
+    except Exception as e:
+        raise Base(e.args[0]) from e
+
+#try:
+chain()
+#except Base as e:
+#    print(e)
 
 print("--------- finally ----------")
 

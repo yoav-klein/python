@@ -14,6 +14,9 @@
 
 from animals.mamals import *
 
+# You can see that the whale module is not there, since it's not in the __all__ list
+print(dir())
+
 human.f_human()
 lion.f_lion()
 
