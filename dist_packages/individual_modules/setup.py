@@ -4,11 +4,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="example-pkg-yoavklein",
+    name="modules-package",
     version="0.0.1",
     author="Yoav Klein",
     author_email="yoavklein25@gmail.com",
-    description="A small example package",
+    description="Package with just modules",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/pypa/sampleproject",
@@ -21,6 +21,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     package_dir={"": "src"},
-    packages=setuptools.find_packages(where="src"),
+    py_modules = ["kuku", "bar"],
     python_requires=">=3.6",
 )
