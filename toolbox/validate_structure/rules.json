@@ -1,0 +1,24 @@
+{
+    "and": [
+        {
+            "pattern": {
+                "path": "test_dir/test.py",
+                "pattern": "class"
+            }
+        }, 
+        {
+            "or": [
+                {
+                    "dir": {
+                        "path": "no-exist"
+                    }
+                },
+                {
+                    "file": {
+                        "path": "rules.json"
+                    }
+                }
+            ]
+        }
+    ]
+}
