@@ -14,6 +14,32 @@ import json
 import os.path
 import argparse
 
+def _search_files_rec(current_dir, path_pattern):
+    first_part_in_path_pattern = path_pattern.split("/", 1)[0]
+    files_found = []
+    if len(path_pattern.split("/")) > 1:
+        matching_subdirs = [dir for dir in os.listdir(current_dir) \
+            if os.path.isdir(os.path.join(current_dir, dir)) \
+            and re.search(first_part_in_path_pattern, dir)] 
+        
+        rest_of_path_pattern = path_pattern.split("/", 1)[1]
+        for subdir in matching_subdirs:
+            files_found += _search_files_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
+            
+        return files_found
+
+    else:
+        files = [os.path.join(current_dir, file) for file in os.listdir(current_dir) \
+            if re.search(first_part_in_path_pattern, file) \
+            and os.path.isfile(os.path.join(current_dir, file))]
+
+        return files
+
+def _get_files(path):
+    files = _search_files_rec(".", path)
+    return files
+
+
 class StructValidateException(Exception):
     pass
 
@@ -65,10 +91,11 @@ class DirectoryExists:
         return os.path.isdir(self._dir_path)
 
 class FileExists:
-    def __init__(self, file_path):
-        self._file_path = file_path
+    def __init__(self, file_path_pattern):
+        self._file_path_pattern = file_path_pattern
     
     def validate(self):
+
         return os.path.isfile(self._file_path)
 
 base_dir = ''
