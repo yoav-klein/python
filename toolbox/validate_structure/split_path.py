@@ -26,6 +26,7 @@ def search_rec(current_dir, path_pattern, search_pattern):
             if re.search(first_part_in_path_pattern, file) \
             and os.path.isfile(os.path.join(current_dir, file))]
 
+        sum = 0
         for file in files:
             found = False
             print(f"Searching in {os.path.join(current_dir, file)}")
@@ -33,10 +34,12 @@ def search_rec(current_dir, path_pattern, search_pattern):
                 for line in f:
                     if re.search(search_pattern, line):
                         found = True
+                        sum += 1
             if found == False:
+                print(f"Didn't find {search_pattern} in {os.path.join(current_dir, file)}")
                 return -1
 
-        return 1
+        return sum
 
 def search_pattern(path, pattern):
     result = search_rec(".", path, pattern)
