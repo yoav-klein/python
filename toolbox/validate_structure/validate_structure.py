@@ -69,7 +69,18 @@ class Pattern:
     def __init__(self, path_pattern, search_pattern):
         self._path_pattern = path_pattern
         self._search_pattern = search_pattern
+    
+    def _search_pattern_in_file(file, pattern):
+        try: 
+            with open(file) as f:
+                for line in f:
+                    if pattern.search(line):
+                        return True
+        except FileNotFoundError:
+            raise StructValidateException('Rule pattern: File %s not found !' % file)
         
+        return False
+
     def validate(self):
         search_pattern = re.compile(self._search_pattern)
         
@@ -82,16 +93,7 @@ class Pattern:
             return False
         
         for file in matching_files_list:
-            found_in_file = False
-            try: 
-                with open(file) as f:
-                    for line in f:
-                        if search_pattern.search(line):
-                            found_in_file = True
-            except FileNotFoundError:
-                raise StructValidateException('Rule pattern: File %s not found !' % file)
-
-            if found_in_file == False:
+            if not Pattern._search_pattern_in_file(file, search_pattern):
                 logging.warning('Pattern search: Couldn\'t find %s in %s', self._search_pattern, self._path_pattern)
                 return False
 
@@ -167,28 +169,8 @@ def decode(object):
     if key == "pattern":
         return Pattern(value['path'], value['pattern'])
     else:
-        raise StructValidateException(f"Unknown rule type: {key}")
+        raise StructValidateException(f"Unknown rule type: {key}")    
 
-def main():
-    try:
-        with open(args.rules_file) as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        log("rules.json file not found !")
-        exit(1)
-    except json.decoder.JSONDecodeError:
-        log("Invalid json!")
-        exit(1)
-    
-    try:
-        rules = decode(data)
-        is_valid = rules.validate()
-    except StructValidateException as e:
-        log(e.__str__())
-        exit(1)
-
-    print(is_valid)
-    
 
 def configure_logger(loglevel):
     log_level_numeric_value = getattr(logging, loglevel.upper(), None)
@@ -197,6 +179,39 @@ def configure_logger(loglevel):
         raise ValueError('Invalid log level: %s' % loglevel)
     
     logging.basicConfig(level=log_level_numeric_value, format="%(levelname)s %(message)s")
+
+def validate_structure(directory, rules_file, loglevel='warning'):
+    configure_logger(loglevel)
+    global base_dir
+    base_dir = os.path.normpath(directory)
+    if not os.path.isdir(base_dir):
+        raise FileNotFoundError('Base directory not found')
+    
+    logging.info('Base directory: %s', base_dir)
+    
+    try:
+        with open(rules_file) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        logging.critical("rules.json file not found !")
+        raise
+    except json.decoder.JSONDecodeError:
+        logging.critical("Invalid json!")
+        raise
+    
+    try:
+        rules = decode(data)
+        is_valid = rules.validate()
+    except StructValidateException as e:
+        log(e.__str__())
+        raise
+
+    if is_valid:
+        logging.info('Directory is valid !')
+    else:
+        logging.error('Directory is invalid !')
+    
+    return is_valid
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Validate a directory structure")
@@ -208,11 +223,12 @@ def parse_arguments():
 
     return args
 
-if __name__ == "__main__":
+def main():
     args = parse_arguments()
-    base_dir = os.path.normpath(args.directory) # global
-    if not os.path.isdir(base_dir):
-        raise FileNotFoundError('Base directory not found !')
-    configure_logger(args.loglevel)
-    logging.info('Base directory: %s', base_dir)
+    is_valid = validate_structure(args.directory, args.rules_file, args.loglevel)
+    
+    if not is_valid:
+        exit(1)
+
+if __name__ == "__main__":
     main()
