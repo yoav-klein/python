@@ -5,8 +5,7 @@ A script to validate a structure of a directory, given a JSON file that describe
 the desired structure to be imposed.
 
 Usage:
-$ py validate_structure.py -f/--rules-file <path_to_file> -d/--directory <path_to_directory>
-
+$ py validate_structure.py -f/--rules-file <path_to_file> -d/--directory <path_to_directory> [--loglevel <info/debug/warning/error/critical>]
 """
 
 import re
@@ -15,23 +14,25 @@ import os.path
 import argparse
 import logging
 
-def _search_files_rec(current_dir, path_pattern):
+def _search_entries_regex_rec(current_dir, path_pattern):
     """
     takes a directory <current_dir> and a path_pattern regex and returns
-    all the files matching that regex.
+    all the file system entries matching that regex. (both directories and files)
 
     example: 
     the path_pattern 'fo.+/ba.+/prog.c' will match:
         foo/bar/prog.c
         fog/baz/prog.c
+    the path_pattern fo.+/ba.+ will match:
+        foo/bar
+        fog/barbara.txt
 
     path_pattern must be a path-like string, delimited by ONLY '/' - not '\' 
     since \ also denotes a special character in regex so we can't know which is for dividing path parts and which
     is for regex special character.
     """
-
     first_part_in_path_pattern = path_pattern.split("/", 1)[0]
-    files_found = []
+    entries_found = []
     if len(path_pattern.split("/")) > 1: # if we have at least one '/'  we search for directories
         # get a list of matching subdirectories in the current directory
         matching_subdirs = [dir for dir in os.listdir(current_dir) \
@@ -40,20 +41,26 @@ def _search_files_rec(current_dir, path_pattern):
         
         rest_of_path_pattern = path_pattern.split("/", 1)[1]
         for subdir in matching_subdirs:
-            files_found += _search_files_rec(os.path.join(current_dir, subdir), rest_of_path_pattern) # add the returned files to the list of files found
+            entries_found += _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern) # add the returned files to the list of files found
 
-        return files_found
+        return entries_found
 
     else:
-        files_found = [os.path.join(current_dir, file) for file in os.listdir(current_dir) \
-            if re.search(first_part_in_path_pattern, file) \
-            and os.path.isfile(os.path.join(current_dir, file))]
+        entries_found = [os.path.join(current_dir, entry) for entry in os.listdir(current_dir) \
+            if re.search(first_part_in_path_pattern, entry)]
 
-        return files_found
+        return entries_found
 
-def _get_files_by_regex(path_pattern, base_dir):
-    files = _search_files_rec(base_dir, path_pattern)
+
+def _get_files_by_regex(path_pattern):
+    matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
+    files = [file for file in matching_entries if os.path.isfile(file)]
     return files
+
+def _get_directories_by_regex(path_pattern):
+    matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
+    dirs = [file for file in matching_entries if os.path.isdir(file)]
+    return dirs
 
 class StructValidateException(Exception):
     pass
@@ -62,17 +69,16 @@ class Pattern:
     def __init__(self, path_pattern, search_pattern):
         self._path_pattern = path_pattern
         self._search_pattern = search_pattern
-        logging.debug('Pattern: path: %s, search_pattern: %s', path_pattern, search_pattern)
-    
+        
     def validate(self):
         search_pattern = re.compile(self._search_pattern)
         
-        matching_files_list = _get_files_by_regex(self._path_pattern, base_dir)
-        logging.debug('validating Pattern: path_pattern: %s, search_pattern: %s, found files: %s', 
+        matching_files_list = _get_files_by_regex(self._path_pattern)
+        logging.debug('Pattern: path_pattern: %s, search_pattern: %s, found files: %s', 
         self._path_pattern, self._search_pattern, matching_files_list)
 
         if not matching_files_list:
-            logging.error('Pattern search: No files matching path_pattern: %s', self._path_pattern)
+            logging.warning('Pattern search: No files matching path_pattern: %s', self._path_pattern)
             return False
         
         for file in matching_files_list:
@@ -86,7 +92,7 @@ class Pattern:
                 raise StructValidateException('Rule pattern: File %s not found !' % file)
 
             if found_in_file == False:
-                logging.error('Pattern search: Couldn\'t find %s in %s', self._search_pattern, self._path_pattern)
+                logging.warning('Pattern search: Couldn\'t find %s in %s', self._search_pattern, self._path_pattern)
                 return False
 
         return True
@@ -118,14 +124,28 @@ class DirectoryExists:
         self._dir_path_pattern = dir_path_pattern
     
     def validate(self):
-        return os.path.isdir(self._dir_path)
+        dirs = _get_directories_by_regex(self._dir_path_pattern)
+        logging.debug("Directory: %s, Found: %s", self._dir_path_pattern, dirs)
+        
+        if len(dirs) == 0:
+            logging.warning("Directory wasn't found: %s", self._dir_path_pattern)
+            return False
+        
+        return True
 
 class FileExists:
     def __init__(self, file_path_pattern):
         self._file_path_pattern = file_path_pattern
     
     def validate(self):
-        return os.path.isfile(self._file_path)
+        files = _get_files_by_regex(self._file_path_pattern)
+        logging.debug("File: %s, Found: %s", self._file_path_pattern, files)
+        
+        if len(files) == 0:
+            logging.warning("File wasn't found: %s", self._file_path_pattern)
+            return False
+        
+        return True
 
 
 def decode(object):
@@ -184,21 +204,15 @@ def parse_arguments():
     parser.add_argument("-d", "--directory", required=True, help="The directory to validate")
     parser.add_argument('--loglevel', help="Set the loglevel: debug, info, warning, error",
                         default="warning")
-    
     args = parser.parse_args()
 
     return args
 
-
-
 if __name__ == "__main__":
     args = parse_arguments()
-    base_dir = args.directory # global
+    base_dir = os.path.normpath(args.directory) # global
     if not os.path.isdir(base_dir):
         raise FileNotFoundError('Base directory not found !')
     configure_logger(args.loglevel)
     logging.info('Base directory: %s', base_dir)
     main()
-
-    
-    

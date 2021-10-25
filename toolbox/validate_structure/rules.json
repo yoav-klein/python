@@ -2,9 +2,29 @@
     "and": [
         {
             "pattern": {
-                "path": "test_dir/ba.+/fo.+/ben.txt",
+                "path": "ba.+/fo.+/ben.txt",
                 "pattern": "somepat{2}ern"
             }
+        },
+        {
+            "file": {
+                "path": "ba.+/fo.+/bet"
+            }
+        },
+        {
+            "or": [ 
+                {
+                    "dir": {
+                        "path": "^fi$"
+                    }
+                },
+                {
+                    "dir": {
+                        "path": "^fi"
+                    }
+                }
+                
+            ]
         }
     ]
 }
