@@ -2,23 +2,9 @@
     "and": [
         {
             "pattern": {
-                "path": "test_dir/test.py",
-                "pattern": "class"
+                "path": "test_dir/ba.+/fo.+/ben.txt",
+                "pattern": "somepat{2}ern"
             }
-        }, 
-        {
-            "or": [
-                {
-                    "dir": {
-                        "path": "no-exist"
-                    }
-                },
-                {
-                    "file": {
-                        "path": "rules.json"
-                    }
-                }
-            ]
         }
     ]
 }
