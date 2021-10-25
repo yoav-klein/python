@@ -15,51 +15,71 @@ import os.path
 import argparse
 
 def _search_files_rec(current_dir, path_pattern):
+    """
+    takes a directory <current_dir> and a path_pattern regex and returns
+    all the files matching that regex.
+
+    example: 
+    the path_pattern 'fo.+/ba.+/prog.c' will match:
+        foo/bar/prog.c
+        fog/baz/prog.c
+
+    path_pattern must be a path-like string, delimited by ONLY '/' - not '\' 
+    since \ also denotes a special character in regex so we can't know which is for dividing path parts and which
+    is for regex special character.
+    """
+
     first_part_in_path_pattern = path_pattern.split("/", 1)[0]
     files_found = []
-    if len(path_pattern.split("/")) > 1:
-        matching_subdirs = [dir for dir in os.listdir(current_dir) \
+    if len(path_pattern.split("/")) > 1: # if we have at least one / so we search for directories
+        # get a list of matching subdirectories in the current directory
+        matching_subdirs = [dir for dir in os.listdir(current_dir) \ 
             if os.path.isdir(os.path.join(current_dir, dir)) \
-            and re.search(first_part_in_path_pattern, dir)] 
+            and re.search(first_part_in_path_pattern, dir)]
         
         rest_of_path_pattern = path_pattern.split("/", 1)[1]
         for subdir in matching_subdirs:
-            files_found += _search_files_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
-            
+            files_found += _search_files_rec(os.path.join(current_dir, subdir), rest_of_path_pattern) # add the returned files to the list of files found
+
         return files_found
 
     else:
-        files = [os.path.join(current_dir, file) for file in os.listdir(current_dir) \
+        files_found = [os.path.join(current_dir, file) for file in os.listdir(current_dir) \
             if re.search(first_part_in_path_pattern, file) \
             and os.path.isfile(os.path.join(current_dir, file))]
 
-        return files
+        return files_found
 
-def _get_files(path):
-    files = _search_files_rec(".", path)
+def _get_files_by_regex(path_pattern):
+    files = _search_files_rec(".", path_pattern)
     return files
-
 
 class StructValidateException(Exception):
     pass
 
 class Pattern:
-    def __init__(self, file_path, pattern):
-        self._file_path = file_path
-        self._pattern = pattern
+    def __init__(self, path_pattern, search_pattern):
+        self._path_pattern = path_pattern
+        self._search_pattern = search_pattern
     
     def validate(self):
-        pattern = re.compile(self._pattern)
+        search_pattern = re.compile(self._search_pattern)
         
-        try:
-            with open(self._file_path) as f:
-                for line in f:
-                    if pattern.search(line):
-                        return True
-        except FileNotFoundError:
-            raise StructValidateException(f"Rule pattern: File {self._file_path} not found !")
+        matching_files_list = _get_files_by_regex(path_pattern)
+        for file in matching_files_list:
+            found_in_file = False
+            try: 
+                with open(self._path_pattern) as f:
+                    for line in f:
+                        if search_pattern.search(line):
+                            found_in_file = True
+            except FileNotFoundError:
+                raise StructValidateException(f"Rule pattern: File {self._file_path} not found !")
 
-        return False
+            if found_in_file == False:
+                return False
+
+        return True
 
 class And:
     def __init__(self, rules_list):
