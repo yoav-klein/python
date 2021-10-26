@@ -32,34 +32,38 @@ def _search_entries_regex_rec(current_dir, path_pattern):
     is for regex special character.
     """
     first_part_in_path_pattern = path_pattern.split("/", 1)[0]
+    first_part_in_path_pattern_re = re.compile(first_part_in_path_pattern)
     entries_found = []
     if len(path_pattern.split("/")) > 1: # if we have at least one '/'  we search for directories
-        # get a list of matching subdirectories in the current directory
-        matching_subdirs = [dir for dir in os.listdir(current_dir) \
-            if os.path.isdir(os.path.join(current_dir, dir)) \
-            and re.search(first_part_in_path_pattern, dir)]
-        
         rest_of_path_pattern = path_pattern.split("/", 1)[1]
-        for subdir in matching_subdirs:
-            entries_found += _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern) # add the returned files to the list of files found
-
+        for subdir in [entry for entry in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, entry))]:
+            match = first_part_in_path_pattern_re.match(subdir)
+            if match:
+                matching_entries_in_dir = _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
+                for matching_entry in matching_entries_in_dir:
+                    matching_entry[1][:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
+                    entries_found.append(matching_entry)
+        
         return entries_found
 
     else:
-        entries_found = [os.path.join(current_dir, entry) for entry in os.listdir(current_dir) \
-            if re.search(first_part_in_path_pattern, entry)]
-
+        for entry in os.listdir(current_dir):
+            match = first_part_in_path_pattern_re.search(entry)
+            if match:
+                entries_found.append((os.path.join(current_dir, entry), list(match.groups())))
+                
         return entries_found
 
 
 def _get_files_by_regex(path_pattern):
     matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    files = [file for file in matching_entries if os.path.isfile(file)]
+    print(matching_entries)
+    files = [file for file, groups in matching_entries if os.path.isfile(file)]
     return files
 
 def _get_directories_by_regex(path_pattern):
     matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    dirs = [file for file in matching_entries if os.path.isdir(file)]
+    dirs = [file for file, groups in matching_entries if os.path.isdir(file)]
     return dirs
 
 class StructValidateException(Exception):

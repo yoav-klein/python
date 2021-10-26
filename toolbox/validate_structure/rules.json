@@ -2,7 +2,7 @@
     "and": [
         {
             "pattern": {
-                "path": "ba.+/fo.+/ben.txt",
+                "path": "bar/foi/take.txt",
                 "pattern": "somepat{2}ern"
             }
         },
