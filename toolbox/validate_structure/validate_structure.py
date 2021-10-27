@@ -57,13 +57,12 @@ def _search_entries_regex_rec(current_dir, path_pattern):
 
 def _get_files_by_regex(path_pattern):
     matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    print(matching_entries)
-    files = [file for file, groups in matching_entries if os.path.isfile(file)]
+    files = [entry for entry in matching_entries if os.path.isfile(entry[0])]
     return files
 
 def _get_directories_by_regex(path_pattern):
     matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    dirs = [file for file, groups in matching_entries if os.path.isdir(file)]
+    dirs = [entry for entry in matching_entries if os.path.isdir(entry[0])]
     return dirs
 
 class StructValidateException(Exception):
@@ -97,7 +96,7 @@ class Pattern:
             return False
         
         for file in matching_files_list:
-            if not Pattern._search_pattern_in_file(file, search_pattern):
+            if not Pattern._search_pattern_in_file(file[0], search_pattern):
                 logging.warning('Pattern search: Couldn\'t find %s in %s', self._search_pattern, self._path_pattern)
                 return False
 
@@ -126,24 +125,44 @@ class Or:
         return False
 
 class Directory:
-    class Files:
-        def __init__(self, files_list):
-            self._files_list = files_list
+    # class Files:
+    #     def __init__(self, data):
+    #         self._data = data
         
-        def validate(self):
-            dirs = _get_directories_by_regex()
+
+    #     def validate(self):
+    #         dirs = _get_directories_by_regex()
     
-    def __init__(self, conditions):
-        self._conditions = conditions
+    def _search_files_in_dir(directory, files_list):
+        logging.debug(f'Directory::_search_files_in_dir: Directory: {directory}')
+        for file in files_list:
+            logging.debug(f'Directory::_search_files_in_dir: File {file}')
+            for i in range(len(directory[1])): # directory is a tuple ('directory_path', [groups])
+                file = file.replace(f'\{str(i)}', directory[1][i])
+            logging.debug(f'Directory::_search_files_in_dir: Aftr replace: {file}')
+            file_to_search = os.path.join(directory[0], file)   
+            if not os.path.isfile(file_to_search):
+                logging.warning(f'did not find {file_to_search}')
+                return False
+        
+        return True
+    
+    def __init__(self, data):
+        self._data = data
     
     def validate(self):
-        dirs = _get_directories_by_regex(self.conditions.path)
-        logging.debug("Directory: %s, Found: %s", self.path, dirs)
+        dirs = _get_directories_by_regex(self._data['path'])
+        logging.debug("Directory::validate: pattern: %s, Found: %s", self._data['path'], dirs)
         
         if len(dirs) == 0:
-            logging.warning("Directory wasn't found: %s", self.path)
+            logging.warning("Directory wasn't found: %s", self._data['path'])
             return False
         
+        if 'files' in self._data:
+            for found_dir in dirs:
+                if not Directory._search_files_in_dir(found_dir, self._data['files']):
+                    return False
+                    
         return True
 
 class File:

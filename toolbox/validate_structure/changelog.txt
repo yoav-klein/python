@@ -1,0 +1,19 @@
+
+
+2.1
+-------
+- Added the ability to add "files" entry in "dir". Each directory found
+matching the regex will be searched for ALL the files listed in "files".
+"files" is a list which may contain \\0 \\1 etc, this corresponds to groups
+in the directory regex. 
+
+For example:
+"dir": {
+    "path": "ba(.+)/fo(.+)",
+    "files": [
+        "ta\\1.txt"
+    ]
+}
+
+This will look in bar/foo for tao.txt
+
