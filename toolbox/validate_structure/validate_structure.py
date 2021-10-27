@@ -31,6 +31,7 @@ def _search_entries_regex_rec(current_dir, path_pattern):
     since \ also denotes a special character in regex so we can't know which is for dividing path parts and which
     is for regex special character.
     """
+    print(f"Path pattern: {path_pattern}")
     first_part_in_path_pattern = path_pattern.split("/", 1)[0]
     first_part_in_path_pattern_re = re.compile(first_part_in_path_pattern)
     entries_found = []
@@ -125,60 +126,95 @@ class Or:
         return False
 
 class Directory:
-    # class Files:
-    #     def __init__(self, data):
-    #         self._data = data
-        
+    """
+    validates a directory (or a set of directories). takes a regex to match a path, and optionally
+    other fields used to validate the directory(ies). those fields are validated using the corresponding
+    subclasses.
+    """
 
-    #     def validate(self):
-    #         dirs = _get_directories_by_regex()
+    class Files:
+        """
+        validates existence of files in the directories
+        """
+        def __init__(self, files_list):
+            self._files_list = files_list
+        
+        def validate(self, directories):
+            for directory in directories:
+                if not Directory.Files._search_files_in_dir(directory, self._files_list):
+                    return False
+                
+            return True
+
+        def _search_files_in_dir(directory, files_list):
+            logging.debug(f'Directory::_search_files_in_dir: Directory: {directory}')
+            for file in files_list:
+                logging.debug(f'Directory::_search_files_in_dir: File {file}')
+                for i in range(len(directory[1])): # directory is a tuple ('directory_path', [groups])
+                    file = file.replace(f'\{str(i)}', directory[1][i])
+                logging.debug(f'Directory::_search_files_in_dir: Aftr replace: {file}')
+                file_to_search = os.path.join(directory[0], file)   
+                if not os.path.isfile(file_to_search):
+                    logging.warning(f'did not find {file_to_search}')
+                    return False
+            
+            return True
     
-    def _search_files_in_dir(directory, files_list):
-        logging.debug(f'Directory::_search_files_in_dir: Directory: {directory}')
-        for file in files_list:
-            logging.debug(f'Directory::_search_files_in_dir: File {file}')
-            for i in range(len(directory[1])): # directory is a tuple ('directory_path', [groups])
-                file = file.replace(f'\{str(i)}', directory[1][i])
-            logging.debug(f'Directory::_search_files_in_dir: Aftr replace: {file}')
-            file_to_search = os.path.join(directory[0], file)   
-            if not os.path.isfile(file_to_search):
-                logging.warning(f'did not find {file_to_search}')
+    class OnlyFolders:
+        """
+        validates that the directories contain only folders, no files
+        """
+        def __init__(self):
+            pass
+        
+        def validate(self, directories):
+            for directory in directories:
+                files_list = [entry for entry in os.listdir(directory[0]) if os.path.isfile(os.path.join(directory[0], entry))]
+                if len(files_list):
+                    logging.warning(f'OnlyFolders::validate: Found files in {directory[0]}')
+                    return False
+            
+            return True
+
+        
+    def __init__(self, data):
+        self._data = data
+        self._validation_list = []
+        if 'files' in self._data:
+            self._validation_list.append(Directory.Files(self._data['files']))
+        if 'only_folders' in self._data and self._data['only_folders'] == True:     
+            self._validation_list.append(Directory.OnlyFolders())
+
+    def validate(self):
+        found_dirs = _get_directories_by_regex(self._data['path'])
+        logging.debug("Directory::validate: pattern: %s, Found: %s", self._data['path'], found_dirs)
+        
+        if len(found_dirs) == 0:
+            logging.warning("Directory wasn't found: %s", self._data['path'])
+            return False
+        
+        for validation_item in self._validation_list:
+            if not validation_item.validate(found_dirs):
                 return False
         
         return True
-    
+
+class File:
+    """
+    validates the existence of a file
+    """
     def __init__(self, data):
         self._data = data
     
     def validate(self):
-        dirs = _get_directories_by_regex(self._data['path'])
-        logging.debug("Directory::validate: pattern: %s, Found: %s", self._data['path'], dirs)
+        files_found = _get_files_by_regex(self._data['path'])
+        logging.debug("File: %s, Found: %s", self._data['path'], files_found)
         
-        if len(dirs) == 0:
-            logging.warning("Directory wasn't found: %s", self._data['path'])
-            return False
-        
-        if 'files' in self._data:
-            for found_dir in dirs:
-                if not Directory._search_files_in_dir(found_dir, self._data['files']):
-                    return False
-                    
-        return True
-
-class File:
-    def __init__(self, file_path_pattern):
-        self._file_path_pattern = file_path_pattern
-    
-    def validate(self):
-        files = _get_files_by_regex(self._file_path_pattern)
-        logging.debug("File: %s, Found: %s", self._file_path_pattern, files)
-        
-        if len(files) == 0:
-            logging.warning("File wasn't found: %s", self._file_path_pattern)
+        if len(files_found) == 0:
+            logging.warning("File wasn't found: %s", self._data['path'])
             return False
         
         return True
-
 
 def decode(object):
     """

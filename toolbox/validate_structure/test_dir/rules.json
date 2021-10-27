@@ -10,7 +10,19 @@
         },
         {
             "dir": {
-                "path": "bor"
+                "path": "bor",
+                "only_folders": true
+            }
+        },
+        {
+            "pattern": {
+                "path": "bar/foo/tart.txt",
+                "pattern": "somepatter"
+            }
+        },
+        {
+            "file": {
+                "path": "bor/fog/target.txt"
             }
         }
     ]
