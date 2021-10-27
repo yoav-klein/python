@@ -15,7 +15,7 @@ import re
 #tup = ("file.txt", [1, 2, 3])
 lst1 = [1, 2, 3]
 lst2 = [4, 5, 6]
-lst1[:0] = lst2
+lst1[0:0] = lst2
 print(lst1)
 
 #lst += tuple(1, 2)

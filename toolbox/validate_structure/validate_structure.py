@@ -39,10 +39,10 @@ def _search_entries_regex_rec(current_dir, path_pattern):
         for subdir in [entry for entry in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, entry))]:
             match = first_part_in_path_pattern_re.match(subdir)
             if match:
-                matching_entries_in_dir = _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
-                for matching_entry in matching_entries_in_dir:
-                    matching_entry[1][:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
-                    entries_found.append(matching_entry)
+                entries_found_in_subdir = _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
+                for entry_found in entries_found_in_subdir:
+                    entry_found[1][:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
+                    entries_found.append(entry_found)
         
         return entries_found
 
@@ -125,21 +125,28 @@ class Or:
         
         return False
 
-class DirectoryExists:
-    def __init__(self, dir_path_pattern):
-        self._dir_path_pattern = dir_path_pattern
+class Directory:
+    class Files:
+        def __init__(self, files_list):
+            self._files_list = files_list
+        
+        def validate(self):
+            dirs = _get_directories_by_regex()
+    
+    def __init__(self, conditions):
+        self._conditions = conditions
     
     def validate(self):
-        dirs = _get_directories_by_regex(self._dir_path_pattern)
-        logging.debug("Directory: %s, Found: %s", self._dir_path_pattern, dirs)
+        dirs = _get_directories_by_regex(self.conditions.path)
+        logging.debug("Directory: %s, Found: %s", self.path, dirs)
         
         if len(dirs) == 0:
-            logging.warning("Directory wasn't found: %s", self._dir_path_pattern)
+            logging.warning("Directory wasn't found: %s", self.path)
             return False
         
         return True
 
-class FileExists:
+class File:
     def __init__(self, file_path_pattern):
         self._file_path_pattern = file_path_pattern
     
@@ -167,9 +174,9 @@ def decode(object):
     if key == "or":
         return Or(value) # list
     if key == "dir":
-        return DirectoryExists(value['path'])
+        return Directory(value)
     if key == "file":
-        return FileExists(value['path'])
+        return File(value)
     if key == "pattern":
         return Pattern(value['path'], value['pattern'])
     else:
@@ -207,7 +214,7 @@ def validate_structure(directory, rules_file, loglevel='warning'):
         rules = decode(data)
         is_valid = rules.validate()
     except StructValidateException as e:
-        log(e.__str__())
+        logging.error(e.__str__())
         raise
 
     if is_valid:
