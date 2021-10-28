@@ -1,0 +1,13 @@
+{
+    "and": [
+        {
+            "file": {
+                "path": "k(u)ku.(t)xt",
+                "mandatory": true,
+                "rules": {
+                    "pattern": "kiki"
+                }
+            }
+        }
+    ]
+}
