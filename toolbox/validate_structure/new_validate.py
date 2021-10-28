@@ -14,8 +14,6 @@ import os.path
 import argparse
 import logging
 
-
-
 class FileSystemContext:
     def __init__(self, path, groups):
         self.path = path
@@ -63,27 +61,17 @@ def _search_entries_regex_rec(current_dir, path_pattern):
         return entries_found
 
 
-def _get_files_by_regex(path_pattern):
-    matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    files = [entry for entry in matching_entries if os.path.isfile(entry[0])]
-    return files
-
-def _get_directories_by_regex(path_pattern):
-    matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    dirs = [entry for entry in matching_entries if os.path.isdir(entry[0])]
-    return dirs
-
 
 def validate_directory(data, fsctx):
     def check_size(file, size):
         return True
 
-    def all_of(directory, data):
-        if not isinstance(data, list):
+    def all_of(directory, rule_list):
+        if not isinstance(rule_list, list):
             raise ValueError("and must be a list !")
         
-        for rule in data:
-            is_valid = directory.validate(data, data)
+        for rule in rule_list:
+            is_valid = validate(directory, rule)
             if not is_valid:
                 return False
         
@@ -94,51 +82,73 @@ def validate_directory(data, fsctx):
             raise ValueError("and must be a list !")
 
         for rule in data:
-            is_valid = directory.validate(data, data)
+            is_valid = validate(data, data)
             if is_valid:
                 return True
         
         return False
 
     def validate(directory, obj):
-        rule_type = obj.keys()[0]
+        rule_type = list(obj.keys())[0]
         data = obj[rule_type]
         if rule_type == "file":
-            file(data, directory)
-        if rule_type == "size":
-            check_size(file, data)
-        if rule_type == "and":
-            all_of(file, data)
-        if rule_type == "or":
-            one_of(file, data)
+            return validate_file(data, directory)
+        elif rule_type == "dir":
+            return validate_directory(data, directory)
+        elif rule_type == "size":
+            return check_size(directory, data)
+        elif rule_type == "and":
+            return all_of(directory, data)
+        elif rule_type == "or":
+            return one_of(directory, data)
+        else:
+            raise ValueError(f"directory rule type {rule_type} is invalid !")
+
+    logging.debug(f"Directory validation: {data['path']}, context: {fsctx.path}")
 
     for group_index in range(len(fsctx.groups)):
-        data.path = data.path.replace(f'\{str(group_index)}', fsctx.groups[group_index])
+        data['path'] = data['path'].replace(f'\{str(group_index)}', fsctx.groups[group_index])
     
-    found_dirs = _get_directories_by_regex(os.path.join(fsctx.path), data.path)
-
-    if data.mandatory == True and not found_dirs:
+    found_dirs = [entry for entry in _search_entries_regex_rec(fsctx.path, data['path']) if os.path.isdir(entry.path)]
+    if data['mandatory'] == True and not found_dirs:
+        logging.warning(f"Directory {data['path']} not found !")
         return False
+
+    if not 'rules' in data:
+        return True
 
     for found_dir in found_dirs:
         found_dir.groups[0:0] = fsctx.groups
-        validate(found_dir, data.rules)
-
-
+        is_valid = validate(found_dir, data['rules'])
+        if not is_valid:
+            return False
+    
+    return True
+        
 def validate_file(data, fsctx):
     def check_size(file, size):
         return True
 
     def check_pattern(file, pattern):
-        print(f"looking for {pattern} in {file.path}, {file.groups}")
-        return True
+        # replace tokens in pattern
+        for group_index in range(len(file.groups)):
+            pattern = pattern.replace(f'\{str(group_index)}', file.groups[group_index])
+        
+        pattern_re = re.compile(pattern)
+        logging.debug(f"Pattern validation: file: {file.path}, pattern: {pattern}")
+        with open(file.path) as f:
+            for line in f:
+                if pattern_re.search(line):
+                    return True
+        
+        return False
 
     def all_of(file, data):
         if not isinstance(data, list):
             raise ValueError("and must be a list !")
 
         for rule in data:
-            is_valid = file.validate(file, data)
+            is_valid = validate_file(file, data)
             if not is_valid:
                 return False
         
@@ -149,15 +159,13 @@ def validate_file(data, fsctx):
             raise ValueError("and must be a list !")
 
         for rule in data:
-            is_valid = file.validate(file, data)
+            is_valid = validate_file(file, data)
             if is_valid:
                 return True
         
         return False
 
     def validate(file, obj):
-        print(file)
-        print(obj)
         rule_type = list(obj.keys())[0]
         data = obj[rule_type]
         if rule_type == "pattern":
@@ -171,23 +179,34 @@ def validate_file(data, fsctx):
         else:
             raise ValueError('invalid rule type')
 
+    logging.debug(f"File validation: path: {data['path']}, context: {fsctx.path}, {fsctx.groups}")
+
     for group_index in range(len(fsctx.groups)):
-        data.path = data.path.replace(f'\{str(group_index)}', fsctx.groups[group_index])
-    
-    #found_files = _get_files_by_regex()
-    found_files = _search_entries_regex_rec(fsctx.path, data['path'])
+        data['path'] = data['path'].replace(f'\{str(group_index)}', fsctx.groups[group_index]) # turn \0 to the first item in groups, etc.
+
+    logging.debug(f"After replacement of tokens: {data['path']}")
+    found_files = [entry for entry in _search_entries_regex_rec(fsctx.path, data['path']) if os.path.isfile(entry.path)]
     
     #print(type(found_files))
     if data['mandatory'] == True and not found_files:
+        logging.warning(f"file {data['path']} not found !")
         return False
-
+    
+    logging.debug(f"Found files: {[entry.path for entry in found_files]}")
+    
+    if not 'rules' in data:
+        return True
+    
     for found_file in found_files:
         found_file.groups[0:0] = fsctx.groups
+        logging.debug(f"File validating: {found_file.path}, {found_file.groups}")
         is_valid = validate(found_file, data['rules'])
         if not is_valid:
             return False
     
     return True
+
+
 
 def all_of(data):
     if not isinstance(data, list):
@@ -211,25 +230,25 @@ def one_of(data):
     
     return False
 
-
 def validate(object):
     """
     takes a dictionary object with only 1 key-value, and determines the type of
     rule by the key string. 
-    instantiates a corresponding class and passes the data to its ctor.
+    calls the relevant validation function and passes the data.
     """
     rule_type = list(object.keys())[0]
     value = object[rule_type]
     if rule_type == "and":
-        return all_of(value) # list
-    if rule_type == "or":
-        return one_of(value) # list
-    if rule_type == "dir":
+        return all_of(value) 
+    elif rule_type == "or":
+        return one_of(value) 
+    elif rule_type == "dir":
         return validate_directory(value, FileSystemContext(base_dir, []))
-    if rule_type == "file":
+    elif rule_type == "file":
         return validate_file(value, FileSystemContext(base_dir, []))
     else:
         raise ValueError(f"Unknown rule type: {rule_type}")    
+
 
 
 def configure_logger(loglevel):

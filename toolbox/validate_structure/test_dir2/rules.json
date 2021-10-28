@@ -3,9 +3,50 @@
         {
             "file": {
                 "path": "k(u)ku.(t)xt",
+                "mandatory": true
+            }
+        },
+        {
+            "file": {
+                "mandatory": false,
+                "path": "bar/fog/tag.txt",
+                "rules": {
+                    "pattern": "some"
+                }
+            }
+        },
+        {
+            "dir": {
+                "path": "(b)az",
                 "mandatory": true,
                 "rules": {
-                    "pattern": "kiki"
+                    "dir": {
+                        "path": "forg(et)",
+                        "mandatory": true,
+                        "rules": {
+                            "and": [
+                                {
+                                    "file": {
+                                        "path": "\\0\\1.t(x)t",
+                                        "mandatory": true,
+                                        "rules": {
+                                            "pattern": "\\0\\1\\2"
+                                        }
+                                    }
+                                },
+                                {
+                                    "file": {
+                                        "path": "\\0ag\\1.txt",
+                                        "mandatory": true,
+                                        "rules": {
+                                            "pattern": "pat"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                                
                 }
             }
         }
