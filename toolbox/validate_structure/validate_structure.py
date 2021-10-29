@@ -13,6 +13,13 @@ import json
 import os.path
 import argparse
 import logging
+import copy
+
+class FileSystemContext:
+    def __init__(self, path, groups):
+        self.path = path
+        self.groups = groups
+
 
 def _search_entries_regex_rec(current_dir, path_pattern):
     """
@@ -31,7 +38,6 @@ def _search_entries_regex_rec(current_dir, path_pattern):
     since \ also denotes a special character in regex so we can't know which is for dividing path parts and which
     is for regex special character.
     """
-    print(f"Path pattern: {path_pattern}")
     first_part_in_path_pattern = path_pattern.split("/", 1)[0]
     first_part_in_path_pattern_re = re.compile(first_part_in_path_pattern)
     entries_found = []
@@ -42,7 +48,7 @@ def _search_entries_regex_rec(current_dir, path_pattern):
             if match:
                 entries_found_in_subdir = _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
                 for entry_found in entries_found_in_subdir:
-                    entry_found[1][:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
+                    entry_found.groups[:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
                     entries_found.append(entry_found)
         
         return entries_found
@@ -51,191 +57,200 @@ def _search_entries_regex_rec(current_dir, path_pattern):
         for entry in os.listdir(current_dir):
             match = first_part_in_path_pattern_re.search(entry)
             if match:
-                entries_found.append((os.path.join(current_dir, entry), list(match.groups())))
+                entries_found.append(FileSystemContext(os.path.join(current_dir, entry), list(match.groups())))
                 
         return entries_found
 
 
-def _get_files_by_regex(path_pattern):
-    matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    files = [entry for entry in matching_entries if os.path.isfile(entry[0])]
-    return files
 
-def _get_directories_by_regex(path_pattern):
-    matching_entries = _search_entries_regex_rec(base_dir, path_pattern)
-    dirs = [entry for entry in matching_entries if os.path.isdir(entry[0])]
-    return dirs
-
-class StructValidateException(Exception):
-    pass
-
-class Pattern:
-    def __init__(self, path_pattern, search_pattern):
-        self._path_pattern = path_pattern
-        self._search_pattern = search_pattern
-    
-    def _search_pattern_in_file(file, pattern):
-        try: 
-            with open(file) as f:
-                for line in f:
-                    if pattern.search(line):
-                        return True
-        except FileNotFoundError:
-            raise StructValidateException('Rule pattern: File %s not found !' % file)
-        
-        return False
-
-    def validate(self):
-        search_pattern = re.compile(self._search_pattern)
-        
-        matching_files_list = _get_files_by_regex(self._path_pattern)
-        logging.debug('Pattern: path_pattern: %s, search_pattern: %s, found files: %s', 
-        self._path_pattern, self._search_pattern, matching_files_list)
-
-        if not matching_files_list:
-            logging.warning('Pattern search: No files matching path_pattern: %s', self._path_pattern)
-            return False
-        
-        for file in matching_files_list:
-            if not Pattern._search_pattern_in_file(file[0], search_pattern):
-                logging.warning('Pattern search: Couldn\'t find %s in %s', self._search_pattern, self._path_pattern)
-                return False
-
+def validate_directory(data, fsctx):
+    def check_size(file, size):
         return True
 
-class And:
-    def __init__(self, rules_list):
-        self._rules_list = rules_list
-    
-    def validate(self):
-        for rule in self._rules_list:
-            if not decode(rule).validate():
+    def all_of(directory, rule_list):
+        if not isinstance(rule_list, list):
+            raise ValueError("and must be a list !")
+        
+        for rule in rule_list:
+            is_valid = validate(directory, rule)
+            if not is_valid:
                 return False
         
         return True
-
-class Or:
-    def __init__(self, rules_list):
-        self._rules_list = rules_list
     
-    def validate(self):
-        for rule in self._rules_list:
-            if decode(rule).validate():
+    def one_of(directory, data):
+        if not isinstance(data, list):
+            raise ValueError("and must be a list !")
+
+        for rule in data:
+            is_valid = validate(data, data)
+            if is_valid:
                 return True
         
         return False
 
-class Directory:
-    """
-    validates a directory (or a set of directories). takes a regex to match a path, and optionally
-    other fields used to validate the directory(ies). those fields are validated using the corresponding
-    subclasses.
-    """
+    def validate(directory, obj):
+        rule_type = list(obj.keys())[0]
+        data = obj[rule_type]
+        if rule_type == "file":
+            return validate_file(data, directory)
+        elif rule_type == "dir":
+            return validate_directory(data, directory)
+        elif rule_type == "size":
+            return check_size(directory, data)
+        elif rule_type == "and":
+            return all_of(directory, data)
+        elif rule_type == "or":
+            return one_of(directory, data)
+        else:
+            raise ValueError(f"directory rule type {rule_type} is invalid !")
 
-    class Files:
-        """
-        validates existence of files in the directories
-        """
-        def __init__(self, files_list):
-            self._files_list = files_list
-        
-        def validate(self, directories):
-            for directory in directories:
-                if not Directory.Files._search_files_in_dir(directory, self._files_list):
-                    return False
-                
-            return True
+    logging.debug(f"Directory validation: {data['path']}, context: {fsctx.path}")
 
-        def _search_files_in_dir(directory, files_list):
-            logging.debug(f'Directory::_search_files_in_dir: Directory: {directory}')
-            for file in files_list:
-                logging.debug(f'Directory::_search_files_in_dir: File {file}')
-                for i in range(len(directory[1])): # directory is a tuple ('directory_path', [groups])
-                    file = file.replace(f'\{str(i)}', directory[1][i])
-                logging.debug(f'Directory::_search_files_in_dir: Aftr replace: {file}')
-                file_to_search = os.path.join(directory[0], file)   
-                if not os.path.isfile(file_to_search):
-                    logging.warning(f'did not find {file_to_search}')
-                    return False
-            
-            return True
+    for group_index in range(len(fsctx.groups)):
+        data['path'] = data['path'].replace(f'\{str(group_index)}', fsctx.groups[group_index])
     
-    class OnlyFolders:
-        """
-        validates that the directories contain only folders, no files
-        """
-        def __init__(self):
-            pass
-        
-        def validate(self, directories):
-            for directory in directories:
-                files_list = [entry for entry in os.listdir(directory[0]) if os.path.isfile(os.path.join(directory[0], entry))]
-                if len(files_list):
-                    logging.warning(f'OnlyFolders::validate: Found files in {directory[0]}')
-                    return False
-            
-            return True
+    found_dirs = [entry for entry in _search_entries_regex_rec(fsctx.path, data['path']) if os.path.isdir(entry.path)]
+    if data['mandatory'] == True and not found_dirs:
+        logging.warning(f"Directory {data['path']} not found !")
+        return False
 
-        
-    def __init__(self, data):
-        self._data = data
-        self._validation_list = []
-        if 'files' in self._data:
-            self._validation_list.append(Directory.Files(self._data['files']))
-        if 'only_folders' in self._data and self._data['only_folders'] == True:     
-            self._validation_list.append(Directory.OnlyFolders())
+    if not 'rules' in data:
+        return True
 
-    def validate(self):
-        found_dirs = _get_directories_by_regex(self._data['path'])
-        logging.debug("Directory::validate: pattern: %s, Found: %s", self._data['path'], found_dirs)
-        
-        if len(found_dirs) == 0:
-            logging.warning("Directory wasn't found: %s", self._data['path'])
+    for found_dir in found_dirs:
+        logging.debug(f"Directory validation {found_dir.path}, validating rules")
+        found_dir.groups[0:0] = fsctx.groups
+        is_valid = validate(found_dir, copy.deepcopy(data['rules']))
+        if not is_valid:
             return False
+    
+    return True
         
-        for validation_item in self._validation_list:
-            if not validation_item.validate(found_dirs):
+def validate_file(data, fsctx):
+    def check_size(file, size):
+        return True
+
+    def check_pattern(file, pattern):
+        # replace tokens in pattern
+        for group_index in range(len(file.groups)):
+            pattern = pattern.replace(f'\{str(group_index)}', file.groups[group_index])
+        
+        pattern_re = re.compile(pattern)
+        logging.debug(f"Pattern validation: file: {file.path}, pattern: {pattern}")
+        with open(file.path) as f:
+            for line in f:
+                if pattern_re.search(line):
+                    return True
+        
+        logging.warning(f"Pattern: didn't find {pattern} in {file.path}")
+        return False
+
+    def all_of(file, data):
+        if not isinstance(data, list):
+            raise ValueError("and must be a list !")
+
+        for rule in data:
+            is_valid = validate(file, rule)
+            if not is_valid:
                 return False
         
         return True
-
-class File:
-    """
-    validates the existence of a file
-    """
-    def __init__(self, data):
-        self._data = data
     
-    def validate(self):
-        files_found = _get_files_by_regex(self._data['path'])
-        logging.debug("File: %s, Found: %s", self._data['path'], files_found)
-        
-        if len(files_found) == 0:
-            logging.warning("File wasn't found: %s", self._data['path'])
-            return False
-        
-        return True
+    def one_of(file, data):
+        if not isinstance(data, list):
+            raise ValueError("and must be a list !")
 
-def decode(object):
+        for rule in data:
+            is_valid = validate(file, rule)
+            if is_valid:
+                return True
+        
+        return False
+
+    def validate(file, obj):
+        rule_type = list(obj.keys())[0]
+        data = obj[rule_type]
+        if rule_type == "pattern":
+            return check_pattern(file, data)
+        elif rule_type == "size":
+            return check_size(file, data)
+        elif rule_type == "and":
+            return all_of(file, data)
+        elif rule_type == "or":
+            return one_of(file, data)
+        else:
+            raise ValueError('invalid rule type')
+
+    logging.debug(f"File validation: path: {data['path']}, context: {fsctx.path}, {fsctx.groups}")
+    file_data = data
+    for group_index in range(len(fsctx.groups)):
+        data['path'] = data['path'].replace(f'\{str(group_index)}', fsctx.groups[group_index]) # turn \0 to the first item in groups, etc.
+
+    logging.debug(f"After replacement of tokens: {data['path']}")
+    found_files = [entry for entry in _search_entries_regex_rec(fsctx.path, data['path']) if os.path.isfile(entry.path)]
+    
+    if data['mandatory'] == True and not found_files:
+        logging.warning(f"file {data['path']} not found !")
+        return False
+    
+    logging.debug(f"Found files: {[entry.path for entry in found_files]}")
+    
+    if not 'rules' in data:
+        return True
+    
+    for found_file in found_files:
+        found_file.groups[0:0] = fsctx.groups
+        logging.debug(f"File validating: {found_file.path}, {found_file.groups}")
+        is_valid = validate(found_file, copy.deepcopy(data['rules']))
+        if not is_valid:
+            return False
+    
+    return True
+
+
+
+def all_of(data):
+    if not isinstance(data, list):
+        raise ValueError("and must be a list !")
+    
+    for rule in data:
+        is_valid = validate(rule)
+        if not is_valid:
+            return False
+    
+    return True
+
+def one_of(data):
+    if not isinstance(data, list):
+        raise ValueError("or must be a list !")
+    
+    for rule in data:
+        is_valid = validate(rule)
+        if is_valid:
+            return True
+    
+    return False
+
+def validate(object):
     """
     takes a dictionary object with only 1 key-value, and determines the type of
     rule by the key string. 
-    instantiates a corresponding class and passes the data to its ctor.
+    calls the relevant validation function and passes the data.
     """
-    key = list(object.keys())[0]
-    value = object[key]
-    if key == "and":
-        return And(value) # list
-    if key == "or":
-        return Or(value) # list
-    if key == "dir":
-        return Directory(value)
-    if key == "file":
-        return File(value)
-    if key == "pattern":
-        return Pattern(value['path'], value['pattern'])
+    rule_type = list(object.keys())[0]
+    value = object[rule_type]
+    if rule_type == "and":
+        return all_of(value) 
+    elif rule_type == "or":
+        return one_of(value) 
+    elif rule_type == "dir":
+        return validate_directory(value, FileSystemContext(base_dir, []))
+    elif rule_type == "file":
+        return validate_file(value, FileSystemContext(base_dir, []))
     else:
-        raise StructValidateException(f"Unknown rule type: {key}")    
+        raise ValueError(f"Unknown rule type: {rule_type}")    
+
 
 
 def configure_logger(loglevel):
@@ -266,9 +281,8 @@ def validate_structure(directory, rules_file, loglevel='warning'):
         raise
     
     try:
-        rules = decode(data)
-        is_valid = rules.validate()
-    except StructValidateException as e:
+        is_valid = validate(data)
+    except Exception as e:
         logging.error(e.__str__())
         raise
 
