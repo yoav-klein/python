@@ -13,6 +13,7 @@ import json
 import os.path
 import argparse
 import logging
+import copy
 
 class FileSystemContext:
     def __init__(self, path, groups):
@@ -118,8 +119,9 @@ def validate_directory(data, fsctx):
         return True
 
     for found_dir in found_dirs:
+        logging.debug(f"Directory validation {found_dir.path}, validating rules")
         found_dir.groups[0:0] = fsctx.groups
-        is_valid = validate(found_dir, data['rules'])
+        is_valid = validate(found_dir, copy.deepcopy(data['rules']))
         if not is_valid:
             return False
     
@@ -141,6 +143,7 @@ def validate_file(data, fsctx):
                 if pattern_re.search(line):
                     return True
         
+        logging.warning(f"Pattern: didn't find {pattern} in {file.path}")
         return False
 
     def all_of(file, data):
@@ -148,7 +151,7 @@ def validate_file(data, fsctx):
             raise ValueError("and must be a list !")
 
         for rule in data:
-            is_valid = validate_file(file, data)
+            is_valid = validate(file, rule)
             if not is_valid:
                 return False
         
@@ -159,7 +162,7 @@ def validate_file(data, fsctx):
             raise ValueError("and must be a list !")
 
         for rule in data:
-            is_valid = validate_file(file, data)
+            is_valid = validate(file, rule)
             if is_valid:
                 return True
         
@@ -180,14 +183,13 @@ def validate_file(data, fsctx):
             raise ValueError('invalid rule type')
 
     logging.debug(f"File validation: path: {data['path']}, context: {fsctx.path}, {fsctx.groups}")
-
+    file_data = data
     for group_index in range(len(fsctx.groups)):
         data['path'] = data['path'].replace(f'\{str(group_index)}', fsctx.groups[group_index]) # turn \0 to the first item in groups, etc.
 
     logging.debug(f"After replacement of tokens: {data['path']}")
     found_files = [entry for entry in _search_entries_regex_rec(fsctx.path, data['path']) if os.path.isfile(entry.path)]
     
-    #print(type(found_files))
     if data['mandatory'] == True and not found_files:
         logging.warning(f"file {data['path']} not found !")
         return False
@@ -200,7 +202,7 @@ def validate_file(data, fsctx):
     for found_file in found_files:
         found_file.groups[0:0] = fsctx.groups
         logging.debug(f"File validating: {found_file.path}, {found_file.groups}")
-        is_valid = validate(found_file, data['rules'])
+        is_valid = validate(found_file, copy.deepcopy(data['rules']))
         if not is_valid:
             return False
     

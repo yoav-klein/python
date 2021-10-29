@@ -22,12 +22,20 @@ import re
 #lst += [(3, 4)]
 
 
-class FileSystemContext:
-    def __init__(self, path, groups):
-        self.path = path
-        self.groups = groups
+# class FileSystemContext:
+#     def __init__(self, path, groups):
+#         self.path = path
+#         self.groups = groups
 
 
-fsc = FileSystemContext("foo/bar/file.txt", ["o", "b"])
+# fsc = FileSystemContext("foo/bar/file.txt", ["o", "b"])
 
-print(fsc.path)
+# print(fsc.path)
+
+obj = {
+    "one": 1,
+    "two": 2
+}
+
+obj2 = dict(obj)
+print(obj2 is obj)
