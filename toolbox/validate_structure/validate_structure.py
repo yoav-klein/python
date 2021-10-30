@@ -97,7 +97,7 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
         
         return False
 
-    def validate(directory, rules):
+    def validate(directory: FileSystemContext, rules: dict) -> bool:
         rule_type = list(rules.keys())[0]
         rule_content = rules[rule_type]
         if rule_type == "file":
@@ -143,6 +143,9 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
 
     def check_pattern(file: FileSystemContext, pattern: str) -> bool:
         # replace tokens in pattern
+        if not isinstance(pattern, str):
+            raise ValueError("pattern must be a string")
+        
         for group_index in range(len(file.groups)):
             pattern = pattern.replace(f'\{str(group_index)}', file.groups[group_index])
         
