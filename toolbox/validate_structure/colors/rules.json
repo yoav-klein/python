@@ -42,7 +42,10 @@
         {
             "dir": {
                 "path": "doc",
-                "mandatory": true
+                "mandatory": true,
+                "rules": {
+                    "only_folders": true
+                }
             }
         }
             
