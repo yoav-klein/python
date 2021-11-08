@@ -70,6 +70,7 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
             raise ValueError("only_folders should be boolean")
         if mandatory:
             if len([file for file in os.listdir(directory.path) if os.path.isfile(os.path.join(directory.path, file))]) > 0:
+                logging.warning(f"Directory {directory.path} contains files !")
                 return False
         
         return True
@@ -122,7 +123,7 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
     
     found_dirs = [entry for entry in _search_entries_regex_rec(fsctx.path, directory_path) if os.path.isdir(entry.path)]
     if dir_data['mandatory'] == True and not found_dirs:
-        logging.warning(f"Directory {dir_data['path']} not found !")
+        logging.warning(f"Directory {directory_path} not found !")
         return False
 
     if not 'rules' in dir_data:
@@ -201,7 +202,7 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
     found_files = [entry for entry in _search_entries_regex_rec(fsctx.path, file_path) if os.path.isfile(entry.path)]
     
     if file_data['mandatory'] == True and not found_files:
-        logging.warning(f"file {file_data['path']} not found !")
+        logging.warning(f"file {os.path.join(fsctx.path, file_path)} not found !")
         return False
     
     logging.debug(f"Found files: {[entry.path for entry in found_files]}")
@@ -248,6 +249,10 @@ def validate(rules: dict) -> bool:
     rule by the key. 
     calls the relevant validation function and passes the data.
     """
+    if len(list(rules.keys())) != 1:
+        logging.error("A rules object should only contain one of file/dir/and/or")
+        raise ValueError(f"Rule object should only contain one object")
+
     rule_type = list(rules.keys())[0]
     rule_content = rules[rule_type]
     if rule_type == "and":
