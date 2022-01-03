@@ -1,5 +1,5 @@
-import pytest
 
+import pytest
 
 class Fruit:
     def __init__(self, name):

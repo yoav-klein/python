@@ -8,3 +8,4 @@ def pytest_assertrepr_compare(op, left, right):
             "Comparing Foo instances:",
             "   vals: {} != {}".format(left.val, right.val),
         ]
+
