@@ -1,0 +1,34 @@
+
+
+2.1
+-------
+- Added the ability to add "files" entry in "dir". Each directory found
+matching the regex will be searched for ALL the files listed in "files".
+"files" is a list which may contain \\0 \\1 etc, this corresponds to groups
+in the directory regex. 
+
+For example:
+"dir": {
+    "path": "ba(.+)/fo(.+)",
+    "files": [
+        "ta\\1.txt"
+    ]
+}
+
+This will look in bar/foo for tao.txt
+
+
+2.2
+-------
+- Added the ability to add "only_folders" entry in "dir". Each directory found
+matching the regex will be checked that it contains only folders, no files.
+
+- Changed implementation: Sections of "dir" ("files", "only_folders") are implemented as classes
+ (actually subclasses of "Directory"). Each of these classes implement validate(directories), 
+ so that it receives the list of the directories matched. 
+
+ 3.0
+ ------
+ - Removed use of classes, only functions
+ - There are now only "dir" and "file". These have a "rules" field which contain rules regarding the file/dir.
+ - Added typehints

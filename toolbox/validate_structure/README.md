@@ -11,14 +11,46 @@ The script reads this file and validates that the directory fulfills all the spe
 ## Usage
 
 ### Rules file
-The file is a JSON file, composed of key value dictionary. The key denotes the type of rule. Currently supported types are:
-- `dir` - check that the directory exists
-- `file` - check that the file exists
-- `and` - list of rules that must all be fulfilled
-- `or` - list of rules of which one must be fulfilled
-- `pattern` - check that a Regex is matched in a file
+The user provides a JSON file which specifies the rules he likes to impose. Rules may be imposed to either a `file` or a directory (`dir`). Rules may be combined using `or` and `and`.
+
+The rules file should contain an object with one field specifying either:
+- `file`
+- `dir`
+- `and`
+- `or`
+
+#### file
+The `file` type must include the following fields:
+- `path` - a regex specifying the path of the file
+- `mandatory` - whether or not at least one file must be found.
+
+It may include a `rules` field, in which he can specify rules that the matching directory(ies) must follow. Supported rules for files are:
+- `pattern`: A regex that must be matched in the file.
+
+
+#### dir
+The `dir` type must include the following fields:
+- `path` - a regex specifying the path of the directory
+- `mandatory` - whether or not at least one directory must be found.
+
+It may include a `rules` field, in which he can specify rules that the matching directory(ies) must follow.
+Supported rules for directories are:
+- `file` - the above file object -  check for a file in the directory. In this case, the `path` of the file is relative to the base of the directories found.
+- `only_folders` - boolean - whether or not the directory must include only folders. 
 
 See the sample `rules.json`
+
+### Path patterns
+The paths given in the rules are matched as regular expressions. Meaning that for example:
+
+The path `fo.+/ba.+/file.txt`
+
+will match:
+- foo/bar/file.txt
+- fog/baz/file.txt
+- forenzic/barbara/file.txt12
+
+In this case, all the found files will be examined against the `rules` field of that `file` object.
 
 ### Run
 

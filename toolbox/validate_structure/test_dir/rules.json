@@ -1,0 +1,29 @@
+{
+    "and": [
+        {
+            "dir": {
+                "path": "ba(.+)/fo(.+)",
+                "files": [
+                    "ta\\1.txt"
+                ]
+            }
+        },
+        {
+            "dir": {
+                "path": "bor",
+                "only_folders": true
+            }
+        },
+        {
+            "pattern": {
+                "path": "bar/foo/tart.txt",
+                "pattern": "somepatter"
+            }
+        },
+        {
+            "file": {
+                "path": "bor/fog/target.txt"
+            }
+        }
+    ]
+}

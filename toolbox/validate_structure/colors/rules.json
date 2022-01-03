@@ -1,0 +1,53 @@
+{
+    "and": [
+        {
+            "dir": {
+                "path": "design/m_colors(.*)",
+                "mandatory": true,
+                "rules": {
+                    "and": [
+                        {
+                            "file": {
+                                "path": "colors\\0\\.(m)",
+                                "mandatory": true,
+                                "rules": {
+                                    "and": [
+                                        {
+                                            "pattern": "function"
+                                        },
+                                        {
+                                            "pattern": "\\0"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "file": {
+                                "path": "colors\\0_init\\.m",
+                                "mandatory": true
+                            }
+                        },
+                        {
+                            "file": {
+                                "path": "colors\\0_default\\.m",
+                                "mandatory": true
+                            }
+                        }
+                    ]
+                                
+                }
+            }
+        },
+        {
+            "dir": {
+                "path": "doc",
+                "mandatory": true,
+                "rules": {
+                    "only_folders": true
+                }
+            }
+        }
+            
+    ]
+}
