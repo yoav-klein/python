@@ -1,0 +1,14 @@
+{
+    "$id": "https://kuku.com",
+    "person": {
+        "type": "object",
+        "properties": {
+            "name": "string",
+            "age": "number"
+        },
+        "additionalProperties": false
+    },
+    "type": {
+        "$ref": "https://kuku.com#/person"
+    }
+}

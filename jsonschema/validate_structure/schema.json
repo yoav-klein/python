@@ -1,0 +1,28 @@
+{
+    "type": "object",
+    "minProperties": 1,
+    "maxProperties": 1,
+    "unevaluatedProperties": false,
+    "anyOf": [
+        {
+            "properties": {
+                "file": {
+                    "type": "object",
+                    "properties": {
+                        "mandatory": {"type": "boolean"}
+                    },
+                    "required": ["mandatory"]
+                }
+            }
+        },
+        {
+            "properties": { "folder": { "type": "object"} }
+        },
+        {
+            "properties": { "and": { "type": "array" } }
+        },
+        {
+            "properties": { "or": { "type": "array" }  }
+        }
+    ]
+}

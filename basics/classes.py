@@ -31,6 +31,10 @@ print("a2.static_attr:", a2.static_attr)
 # why that happened?  since what you did is to add a 'static_attr' attribute
 # to the instance object, you didn't change the class attribute !
 
+# now let's reference a1.static_attr
+print("a1.static_attr:", a1.static_attr)
+# you see that the intsance variable shadow the class attributes
+
 # but changing object_attr of one of them
 a2.object_attr = "changed value"
 print("after a2.object_attr changed: a1.object_attr", a1.object_attr)
