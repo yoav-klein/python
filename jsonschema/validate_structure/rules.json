@@ -1,6 +1,25 @@
 {
-    "folder": {
+    "dir": {
         "mandatory": true,
-        "path": "kuku.txt"
+        "path": "kuku.txt",
+        "rules": {
+            "and": [
+                {
+                    "dir": {
+                        "path": "ee",
+                        "mandatory": true,
+                        "rules": {
+                            "file": {
+                                "path": "yy.txt",
+                                "mandatory": true
+                            }
+                        }
+                    }
+                },
+                {
+                    "only_folders": false
+                }
+            ]
+        }
     }
 }

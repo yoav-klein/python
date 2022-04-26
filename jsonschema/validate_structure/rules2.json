@@ -1,0 +1,38 @@
+{
+    "and": [
+        {
+            "dir": {
+                "mandatory": true,
+                "path": "kuku.txt",
+                "rules": {
+                    "and": [
+                        {
+                            "dir": {
+                                "path": "ee",
+                                "mandatory": true
+                            }
+                        },
+                        {
+                            "only_folders": false
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "file": {
+                "mandatory": true,
+                "path": "keke",
+                "rules": {
+                    "and": [
+                        {
+                            "pattern": "ss"
+                        }
+                    ]
+
+                }
+            }
+        }
+    
+    ]
+}

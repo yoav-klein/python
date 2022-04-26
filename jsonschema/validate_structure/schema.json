@@ -5,9 +5,19 @@
     "unevaluatedProperties": false,
     "properties": {
         "file": { "$ref": "#/$defs/file" },
-        "folder": { "$ref": "#/$defs/folder"},
-        "and": { "type": "array" },
-        "or": { "type": "array" }
+        "dir": { "$ref": "#/$defs/dir"},
+        "and": { 
+            "type": "array",
+            "items": {
+                "$ref": "#"
+            }
+        },
+        "or": { 
+            "type": "array",
+            "items": {
+                "$ref": "#"
+            }
+        }
     },
     "$defs": {
         "file": {
@@ -18,20 +28,56 @@
                 "rules": {
                     "type": "object",
                     "properties": {
-                        "pattern": {"type": "string"}
+                        "pattern": {"type": "string"},
+                        "and": { 
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/file/properties/rules"
+                            }
+                        },
+                        "or": { 
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/file/properties/rules"
+                            }
+                        }
                     },
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "maxProperties": 1,
+                    "minProperties": 1
                 }
             },
             "required": ["mandatory", "path"],
             "additionalProperties": false
         },
-        "folder": {
+        "dir": {
             "type": "object",
             "properties": {
                 "mandatory": {"type": "boolean"},
                 "path": {"type": "string"},
-                "only_folders": {"type": "boolean"}
+                "rules": {
+                    "type": "object",
+                    "properties": {
+                        "only_folders": {"type": "boolean"},
+                        "file": { "$ref": "#/$defs/file" },
+                        "dir": { "$ref": "#/$defs/dir" },
+                        "and": { 
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/dir/properties/rules"
+                            }
+                        },
+                        "or": { 
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/$defs/dir/properties/rules"
+                            }
+                        }
+                    },
+                    "minProperties": 1,
+                    "maxProperties": 1,
+                    "additionalProperties": false
+                }
             },
             "required": ["mandatory", "path"],
             "additionalProperties": false
