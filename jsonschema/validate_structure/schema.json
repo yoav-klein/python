@@ -3,26 +3,38 @@
     "minProperties": 1,
     "maxProperties": 1,
     "unevaluatedProperties": false,
-    "anyOf": [
-        {
+    "properties": {
+        "file": { "$ref": "#/$defs/file" },
+        "folder": { "$ref": "#/$defs/folder"},
+        "and": { "type": "array" },
+        "or": { "type": "array" }
+    },
+    "$defs": {
+        "file": {
+            "type": "object",
             "properties": {
-                "file": {
+                "mandatory": {"type": "boolean"},
+                "path": {"type": "string"},
+                "rules": {
                     "type": "object",
                     "properties": {
-                        "mandatory": {"type": "boolean"}
+                        "pattern": {"type": "string"}
                     },
-                    "required": ["mandatory"]
+                    "additionalProperties": false
                 }
-            }
+            },
+            "required": ["mandatory", "path"],
+            "additionalProperties": false
         },
-        {
-            "properties": { "folder": { "type": "object"} }
-        },
-        {
-            "properties": { "and": { "type": "array" } }
-        },
-        {
-            "properties": { "or": { "type": "array" }  }
+        "folder": {
+            "type": "object",
+            "properties": {
+                "mandatory": {"type": "boolean"},
+                "path": {"type": "string"},
+                "only_folders": {"type": "boolean"}
+            },
+            "required": ["mandatory", "path"],
+            "additionalProperties": false
         }
-    ]
+    }
 }
