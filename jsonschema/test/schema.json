@@ -1,0 +1,19 @@
+{
+    "allOf": [
+        {
+            "properties": {
+                "street_name": {"type": "string"}
+            }
+        },
+        {
+            "properties": {
+                "number": {"type": "number"}
+            }
+        }
+    ],
+    "properties": {
+        "street_name": true,
+        "number": true
+    },
+    "additionalProperties": false
+}
