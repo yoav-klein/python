@@ -29,6 +29,7 @@
                     "type": "object",
                     "properties": {
                         "pattern": {"type": "string"},
+                        "matching_file": {"type": "string"},
                         "and": { 
                             "type": "array",
                             "items": {

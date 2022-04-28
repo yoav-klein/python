@@ -1,28 +1,53 @@
 {
     "and": [
         {
-            "dir": {
-                "path": "ba(.+)/fo(.+)",
-                "files": [
-                    "ta\\1.txt"
-                ]
-            }
-        },
-        {
-            "dir": {
-                "path": "bor",
-                "only_folders": true
-            }
-        },
-        {
-            "pattern": {
-                "path": "bar/foo/tart.txt",
-                "pattern": "somepatter"
+            "file": {
+                "path": "k(u)ku.(t)xt",
+                "mandatory": true
             }
         },
         {
             "file": {
-                "path": "bor/fog/target.txt"
+                "mandatory": false,
+                "path": "bar/fog/tag.txt",
+                "rules": {
+                    "pattern": "some"
+                }
+            }
+        },
+        {
+            "dir": {
+                "path": "(b)az",
+                "mandatory": true,
+                "rules": {
+                    "dir": {
+                        "path": "forg(et)",
+                        "mandatory": true,
+                        "rules": {
+                            "and": [
+                                {
+                                    "file": {
+                                        "path": "\\0\\1.t(x)t",
+                                        "mandatory": true,
+                                        "rules": {
+                                            "pattern": "\\0\\1\\2"
+                                        }
+                                    }
+                                },
+                                {
+                                    "file": {
+                                        "path": "\\0ag\\1.txt",
+                                        "mandatory": true,
+                                        "rules": {
+                                            "pattern": "pat"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                                
+                }
             }
         }
     ]

@@ -1,0 +1,9 @@
+{
+    "file": {
+        "path": "one_(.+)\\.txt",
+        "mandatory": true,
+        "rules": {
+            "matching_file": "two_\\0.txt"
+        }
+    }
+}
