@@ -19,16 +19,14 @@ import copy
 from typing import List
 from pathlib import Path
 
-
-
 base_dir = ''
 
 class FileSystemContext:
-    def __init__(self, path, groups):
+    def __init__(self, path, captures):
         self.path = path
-        self.groups = groups
+        self.captures = captures
     def __str__(self):
-        return f"FileSystemContext(path={self.path}, groups={self.groups})"
+        return f"FileSystemContext(path={self.path}, captures={self.captures})"
 
 
 def _search_entries_regex_rec(current_dir, path_pattern):
@@ -58,7 +56,7 @@ def _search_entries_regex_rec(current_dir, path_pattern):
             if match:
                 entries_found_in_subdir = _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
                 for entry_found in entries_found_in_subdir:
-                    entry_found.groups[:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
+                    entry_found.captures[:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
                     entries_found.append(entry_found)
         
         return entries_found
@@ -117,8 +115,8 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
 
     directory_path = copy.copy(dir_data['path']) # not working directly on data['path'] because it may be needed as is
                                              # in the check of other directories
-    for group_index in range(len(fsctx.groups)):
-        directory_path = directory_path.replace(f'\{str(group_index)}', fsctx.groups[group_index])
+    for capture_index in range(len(fsctx.captures)):
+        directory_path = directory_path.replace(f'\{str(capture_index)}', fsctx.captures[capture_index])
     
     found_dirs = [entry for entry in _search_entries_regex_rec(fsctx.path, directory_path) if os.path.isdir(entry.path)]
     if dir_data['mandatory'] == True and not found_dirs:
@@ -130,7 +128,7 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
 
     for found_dir in found_dirs:
         logging.debug(f"Directory validation {found_dir.path}, validating rules")
-        found_dir.groups[0:0] = fsctx.groups
+        found_dir.captures[0:0] = fsctx.captures
         is_valid = validate(found_dir, dir_data['rules'])
         if not is_valid:
             return False
@@ -146,8 +144,8 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
 
     def check_pattern(file: FileSystemContext, pattern: str) -> bool:
         # replace tokens in pattern
-        for group_index in range(len(file.groups)):
-            pattern = pattern.replace(f'\{str(group_index)}', file.groups[group_index])
+        for capture_index in range(len(file.captures)):
+            pattern = pattern.replace(f'\{str(capture_index)}', file.captures[capture_index])
         
         pattern_re = re.compile(pattern)
         logging.debug(f"Pattern validation: file: {file.path}, pattern: {pattern}")
@@ -191,10 +189,10 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
 
     logging.debug(f"File validation: path: {file_data['path']}, context: {fsctx}")
     file_path = copy.copy(file_data['path'])
-    for group_index in range(len(fsctx.groups)):
-        file_path = file_path.replace(f'\{str(group_index)}', fsctx.groups[group_index]) # turn \0 to the first item in groups, etc.
+    for capture_index in range(len(fsctx.captures)):
+        file_path = file_path.replace(f'\{str(capture_index)}', fsctx.captures[capture_index]) # turn \0 to the first item in captures, etc.
 
-    logging.debug(f"After replacement of tokens: {file_path}")
+    logging.debug(f"After replacement of captures: {file_path}")
     found_files = [entry for entry in _search_entries_regex_rec(fsctx.path, file_path) if os.path.isfile(entry.path)]
     
     if file_data['mandatory'] == True and not found_files:
@@ -207,8 +205,8 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         return True
     
     for found_file in found_files:
-        found_file.groups[0:0] = fsctx.groups
-        logging.debug(f"File validating: {found_file.path}, {found_file.groups}")
+        found_file.captures[0:0] = fsctx.captures
+        logging.debug(f"File validating: {found_file.path}, {found_file.captures}")
         is_valid = validate(found_file, file_data['rules'])
         if not is_valid:
             return False
