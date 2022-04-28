@@ -8,7 +8,6 @@ Usage:
 $ py validate_structure.py -f/--rules-file <path_to_file> -d/--directory <path_to_directory> [--loglevel <info/debug/warning/error/critical>]
 """
 
-from typing import List
 import jsonschema
 import re
 import json
@@ -67,8 +66,6 @@ def _search_entries_regex_rec(current_dir, path_pattern):
 
 def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
     def only_folders(directory: FileSystemContext, mandatory: bool) -> bool:
-        if not isinstance(mandatory, bool):
-            raise ValueError("only_folders should be boolean")
         if mandatory:
             if len([file for file in os.listdir(directory.path) if os.path.isfile(os.path.join(directory.path, file))]) > 0:
                 logging.warning(f"Directory {directory.path} contains files !")
@@ -78,9 +75,6 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
 
 
     def all_of(directory: FileSystemContext, rule_list: List[dict]) -> bool:
-        if not isinstance(rule_list, list):
-            raise ValueError("and must be a list !")
-        
         for rule in rule_list:
             is_valid = validate(directory, rule)
             if not is_valid:
@@ -89,9 +83,6 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
         return True
     
     def one_of(directory: FileSystemContext, rule_list: List[dict]) -> bool:
-        if not isinstance(rule_list, list):
-            raise ValueError("or must be a list !")
-
         for rule in rule_list:
             is_valid = validate(directory, rule)
             if is_valid:
@@ -141,13 +132,13 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
 
 def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
     def check_size(file, size):
+        """
+        TODO
+        """
         return True
 
     def check_pattern(file: FileSystemContext, pattern: str) -> bool:
         # replace tokens in pattern
-        if not isinstance(pattern, str):
-            raise ValueError("pattern must be a string")
-        
         for group_index in range(len(file.groups)):
             pattern = pattern.replace(f'\{str(group_index)}', file.groups[group_index])
         
@@ -162,9 +153,6 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         return False
 
     def all_of(file: FileSystemContext, rule_list: List[dict]) -> bool:
-        if not isinstance(rule_list, list):
-            raise ValueError("and must be a list !")
-
         for rule in rule_list:
             is_valid = validate(file, rule)
             if not is_valid:
@@ -173,9 +161,6 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         return True
     
     def one_of(file: FileSystemContext, rule_list: List[dict]) -> bool:
-        if not isinstance(rule_list, list):
-            raise ValueError("and must be a list !")
-
         for rule in rule_list:
             is_valid = validate(file, rule)
             if is_valid:
@@ -303,28 +288,33 @@ def validate_structure(directory, rules_file):
     
     return is_valid
 
-def read_data(rules_file):
+def read_data(rules_file: str, schema_file: str) -> dict:
     """
     read the rules JSON file and validate it against the schema
-    """
-    try:
-        with open('schema.json') as f:
-            schema = json.load(f)
-        with open(file) as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        logging.critical("rules.json file not found !")
-        raise
-    except json.decoder.JSONDecodeError:
-        logging.critical("Invalid json!")
-        raise
+    """    
+    def read_json_file(file_path: str) -> dict:
+        try:
+            with open(file_path) as f:
+                return json.load(f)
+                
+        except FileNotFoundError:
+            logging.critical(f"file {file_path} not found !")
+            raise
+        except json.decoder.JSONDecodeError:
+            logging.critical(f"{file_path} is an invalid JSON!")
+            raise
+
+
+    schema = read_json_file(schema_file)
+    rules = read_json_file(rules_file)
         
     try:
-        jsonschema.validate(instance=data, schema=schema)
+        jsonschema.validate(instance=rules, schema=schema)
     except jsonschema.exceptions.ValidationError as e:
         logging.error("Your rules.json file is invalid !!!")
         raise
 
+    return rules
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Validate a directory structure")
@@ -336,15 +326,19 @@ def parse_arguments():
 
     return args
 
-def main():
-    args = parse_arguments()
+
+
+
+
+def main(args):
     configure_logger(args.loglevel)
     
-    rules = read_data(args.rules_file)
+    rules = read_data(args.rules_file, 'schema.json')
     is_valid = validate_structure(args.directory, rules)
     
     if not is_valid:
         exit(1)
 
 if __name__ == "__main__":
-    main()
+    args = parse_arguments()
+    main(args)
