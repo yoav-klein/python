@@ -208,44 +208,34 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
     
     return True
 
-def all_of(data: List[dict]) -> bool:
-    if not isinstance(data, list):
-        raise ValueError("and must be a list !")
-    
+def all_of(data: List[dict], directory: Path) -> bool:
     for rule in data:
-        is_valid = validate(rule)
+        is_valid = validate(directory ,rule)
         if not is_valid:
             return False
     
     return True
 
-def one_of(data: List[dict]) -> bool:
-    if not isinstance(data, list):
-        raise ValueError("or must be a list !")
-    
+def one_of(data: List[dict], directory: Path) -> bool:
     for rule in data:
-        is_valid = validate(rule)
+        is_valid = validate(directory, rule)
         if is_valid:
             return True
     
     return False
 
-def validate(rules: dict) -> bool:
+def validate(base_dir: Path, rules: dict) -> bool:
     """
     takes a dictionary 'rules' with only 1 key-value, and determines the type of
     rule by the key. 
     calls the relevant validation function and passes the data.
     """
-    if len(list(rules.keys())) != 1:
-        logging.error("A rules object should only contain one of file/dir/and/or")
-        raise ValueError(f"Rule object should only contain one object")
-
     rule_type = list(rules.keys())[0]
     rule_content = rules[rule_type]
     if rule_type == "and":
-        return all_of(rule_content) 
+        return all_of(rule_content, base_dir) 
     elif rule_type == "or":
-        return one_of(rule_content) 
+        return one_of(rule_content, base_dir) 
     elif rule_type == "dir":
         return validate_directory(rule_content, FileSystemContext(base_dir, []))
     elif rule_type == "file":
@@ -261,25 +251,14 @@ def configure_logger(loglevel):
     
     logging.basicConfig(level=log_level_numeric_value, format="%(levelname)s %(message)s")
 
-def validate_structure(directory, rules_file):
-    global base_dir
-    base_dir = os.path.normpath(directory)
-    if not os.path.isdir(base_dir):
+def validate_structure(directory: str, rules: dict) -> bool:
+    base_dir = Path(directory)
+    if not base_dir.is_dir():
         raise FileNotFoundError('Base directory not found')
     
     logging.info('Base directory: %s', base_dir)
-    
-    try:
-        with open(rules_file) as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        logging.critical("rules.json file not found !")
-        raise
-    except json.decoder.JSONDecodeError:
-        logging.critical("Invalid json!")
-        raise
-    
-    is_valid = validate(data)
+
+    is_valid = validate(base_dir, rules)
     
     if is_valid:
         print('Directory is valid !')
