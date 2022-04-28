@@ -19,42 +19,47 @@ import copy
 from typing import List
 from pathlib import Path
 
-base_dir = ''
 
 class FileSystemContext:
-    def __init__(self, path, captures):
+    """
+    FileSystemContext object represents a file or a directory. It contains
+    the path of the fs entry, and a list of regex captures.
+
+    Example:
+    FileSystemContext(path: 'foo/bar/baz', captures:['o', 'r', 'z'])
+    may be produced from searching 'fo(.+)/ba(.+)/ba(.+)'
+    """
+    def __init__(self, path: Path, captures: List[str]):
         self.path = path
         self.captures = captures
     def __str__(self):
         return f"FileSystemContext(path={self.path}, captures={self.captures})"
 
-
-def _search_entries_regex_rec(current_dir, path_pattern):
+def _search_entries_regex_rec(base_dir: Path, path_pattern: str) -> List[FileSystemContext]:
     """
-    takes a directory <current_dir> and a path_pattern regex and returns
-    all the file system entries matching that regex. (both directories and files)
+    takes a concrete directotry path 'base_dir' and a regex 'path_pattern' and returns
+    a list of FileSystemContext entries matching that regex. (both directories and files)
+    Each FileSystemContext will contain the concrete path found, and a list of captures
+    that were searched in the pattern
 
     example: 
-    the path_pattern 'fo.+/ba.+/prog.c' will match:
-        foo/bar/prog.c
-        fog/baz/prog.c
-    the path_pattern fo.+/ba.+ will match:
-        foo/bar
-        fog/barbara.txt
+    the path_pattern 'fo(.+)/ba(.+)/prog.c' will match:
+        foo/bar/prog.c -> FileSystemContext('foo/bar/prog.c', ['o', 'r'])
+        fog/baz/prog.c -> FileSystemContext('foo/bar/prog.c', ['g', 'z'])
 
     path_pattern must be a path-like string, delimited by ONLY '/' - not '\' 
     since \ also denotes a special character in regex so we can't know which is for dividing path parts and which
     is for regex special character.
     """
-    first_part_in_path_pattern = path_pattern.split("/", 1)[0]
+    first_part_in_path_pattern = path_pattern.split("/", 1)[0] # split 'foo/bar/baz' to 'foo' and 'bar/baz'
     first_part_in_path_pattern_re = re.compile(first_part_in_path_pattern)
     entries_found = []
     if len(path_pattern.split("/")) > 1: # if we have at least one '/'  we search for directories
         rest_of_path_pattern = path_pattern.split("/", 1)[1]
-        for subdir in [entry for entry in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, entry))]:
+        for subdir in [entry for entry in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, entry))]:
             match = first_part_in_path_pattern_re.match(subdir)
             if match:
-                entries_found_in_subdir = _search_entries_regex_rec(os.path.join(current_dir, subdir), rest_of_path_pattern)
+                entries_found_in_subdir = _search_entries_regex_rec(Path(base_dir, subdir), rest_of_path_pattern)
                 for entry_found in entries_found_in_subdir:
                     entry_found.captures[:0] = list(match.groups()) # add groups captured in this match to each tuple in the list
                     entries_found.append(entry_found)
@@ -127,7 +132,8 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
 
     for found_dir in found_dirs:
         logging.debug(f"Directory validation {found_dir.path}, validating rules")
-        found_dir.captures[0:0] = fsctx.captures
+        found_dir.captures[0:0] = fsctx.captures  # push parent FileSystemContext's captures in front of the
+        # captures list of this FileSystemContext
         is_valid = validate(found_dir, dir_data['rules'])
         if not is_valid:
             return False
@@ -204,7 +210,8 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         return True
     
     for found_file in found_files:
-        found_file.captures[0:0] = fsctx.captures
+        found_file.captures[0:0] = fsctx.captures # push all the parent FileSystemContext (the directory the file is in)
+        # in the top of each found_file's captures
         logging.debug(f"File validating: {found_file.path}, {found_file.captures}")
         is_valid = validate(found_file, file_data['rules'])
         if not is_valid:
@@ -274,7 +281,7 @@ def validate_structure(directory: str, rules: dict) -> bool:
 def read_data(rules_file: str, schema_file: str) -> dict:
     """
     read the rules JSON file and validate it against the schema
-    """    
+    """
     def read_json_file(file_path: str) -> dict:
         try:
             with open(file_path) as f:
