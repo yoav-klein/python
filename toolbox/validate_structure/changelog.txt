@@ -32,3 +32,9 @@ matching the regex will be checked that it contains only folders, no files.
  - Removed use of classes, only functions
  - There are now only "dir" and "file". These have a "rules" field which contain rules regarding the file/dir.
  - Added typehints
+
+ 3.1 (28/4/22)
+ ---------
+ - Validating the `rules.json` file using json schema
+ - Using the Path class instead of os.path where possible
+ - Adding `matching_file` rule to `file`
