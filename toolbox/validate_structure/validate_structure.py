@@ -62,22 +62,21 @@ def _search_entries_regex_rec(current_dir, path_pattern):
         return entries_found
 
     else:
-        for entry in os.listdir(current_dir):
+        for entry in os.listdir(base_dir):
             match = first_part_in_path_pattern_re.search(entry)
             if match:
-                entries_found.append(FileSystemContext(os.path.join(current_dir, entry), list(match.groups())))
+                entries_found.append(FileSystemContext(Path(base_dir, entry), list(match.groups())))
                 
         return entries_found
 
 def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
     def only_folders(directory: FileSystemContext, mandatory: bool) -> bool:
         if mandatory:
-            if len([file for file in os.listdir(directory.path) if os.path.isfile(os.path.join(directory.path, file))]) > 0:
+            if len([entry for entry in directory.path.iterdir() if entry.is_file()]) > 0:
                 logging.warning(f"Directory {directory.path} contains files !")
                 return False
         
         return True
-
 
     def all_of(directory: FileSystemContext, rule_list: List[dict]) -> bool:
         for rule in rule_list:
@@ -111,14 +110,14 @@ def validate_directory(dir_data: dict, fsctx: FileSystemContext) -> bool:
         else:
             raise ValueError(f"directory rule type {rule_type} is invalid !")
 
-    logging.debug(f"Directory validation: {dir_data['path']}, context: {fsctx.path}")
+    logging.debug(f"Directory validation: {dir_data['path']}, context: {fsctx}")
 
     directory_path = copy.copy(dir_data['path']) # not working directly on data['path'] because it may be needed as is
                                              # in the check of other directories
     for capture_index in range(len(fsctx.captures)):
         directory_path = directory_path.replace(f'\{str(capture_index)}', fsctx.captures[capture_index])
     
-    found_dirs = [entry for entry in _search_entries_regex_rec(fsctx.path, directory_path) if os.path.isdir(entry.path)]
+    found_dirs = [entry for entry in _search_entries_regex_rec(fsctx.path, directory_path) if entry.path.is_dir()]
     if dir_data['mandatory'] == True and not found_dirs:
         logging.warning(f"Directory {directory_path} not found !")
         return False
@@ -193,10 +192,10 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         file_path = file_path.replace(f'\{str(capture_index)}', fsctx.captures[capture_index]) # turn \0 to the first item in captures, etc.
 
     logging.debug(f"After replacement of captures: {file_path}")
-    found_files = [entry for entry in _search_entries_regex_rec(fsctx.path, file_path) if os.path.isfile(entry.path)]
+    found_files = [entry for entry in _search_entries_regex_rec(fsctx.path, file_path) if entry.path.is_file()]
     
     if file_data['mandatory'] == True and not found_files:
-        logging.warning(f"file {os.path.join(fsctx.path, file_path)} not found !")
+        logging.warning(f"file {Path(fsctx.path, file_path)} not found !")
         return False
     
     logging.debug(f"Found files: {[entry.path for entry in found_files]}")
