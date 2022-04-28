@@ -16,12 +16,19 @@ import argparse
 import logging
 import copy
 
+from typing import List
+from pathlib import Path
+
+
+
 base_dir = ''
 
 class FileSystemContext:
     def __init__(self, path, groups):
         self.path = path
         self.groups = groups
+    def __str__(self):
+        return f"FileSystemContext(path={self.path}, groups={self.groups})"
 
 
 def _search_entries_regex_rec(current_dir, path_pattern):
@@ -182,7 +189,7 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         else:
             raise ValueError('invalid rule type')
 
-    logging.debug(f"File validation: path: {file_data['path']}, context: {fsctx.path}, {fsctx.groups}")
+    logging.debug(f"File validation: path: {file_data['path']}, context: {fsctx}")
     file_path = copy.copy(file_data['path'])
     for group_index in range(len(fsctx.groups)):
         file_path = file_path.replace(f'\{str(group_index)}', fsctx.groups[group_index]) # turn \0 to the first item in groups, etc.
