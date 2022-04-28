@@ -19,6 +19,8 @@ The rules file should contain an object with one field specifying either:
 - `and`
 - `or`
 
+IMPORTANT: all paths must include '/', not '\', even if you're on Windows.
+
 #### file
 The `file` type must include the following fields:
 - `path` - a regex specifying the path of the file
@@ -26,6 +28,7 @@ The `file` type must include the following fields:
 
 It may include a `rules` field, in which he can specify rules that the matching directory(ies) must follow. Supported rules for files are:
 - `pattern`: A regex that must be matched in the file.
+- `matching_file`: A file that must exist in the same directory as this file.
 
 
 #### dir

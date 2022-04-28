@@ -162,6 +162,15 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         logging.warning(f"Pattern: didn't find {pattern} in {file.path}")
         return False
 
+    def check_matching_file(file: FileSystemContext, matching_file: str) -> bool:
+        for capture_index in range(len(file.captures)):
+            matching_file = matching_file.replace(f'\{str(capture_index)}', file.captures[capture_index])
+        
+        logging.debug(f"Matching file validation: match {matching_file} to {str(file.path)}")
+        
+        searched_file = Path(file.path.parent, matching_file)
+        return searched_file.is_file()
+
     def all_of(file: FileSystemContext, rule_list: List[dict]) -> bool:
         for rule in rule_list:
             is_valid = validate(file, rule)
@@ -185,6 +194,8 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
             return check_pattern(file, rule_content)
         elif rule_type == "size":
             return check_size(file, rule_content)
+        elif rule_type == "matching_file":
+            return check_matching_file(file, rule_content)
         elif rule_type == "and":
             return all_of(file, rule_content)
         elif rule_type == "or":
@@ -193,6 +204,8 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
             raise ValueError('invalid rule type')
 
     logging.debug(f"File validation: path: {file_data['path']}, context: {fsctx}")
+
+    # first, replace the capture references in the file path pattern (i.e. \0 \1, etc.)
     file_path = copy.copy(file_data['path'])
     for capture_index in range(len(fsctx.captures)):
         file_path = file_path.replace(f'\{str(capture_index)}', fsctx.captures[capture_index]) # turn \0 to the first item in captures, etc.
@@ -204,7 +217,7 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
         logging.warning(f"file {Path(fsctx.path, file_path)} not found !")
         return False
     
-    logging.debug(f"Found files: {[entry.path for entry in found_files]}")
+    logging.debug(f"Found files: {[str(entry.path) for entry in found_files]}")
     
     if not 'rules' in file_data:
         return True
@@ -212,7 +225,7 @@ def validate_file(file_data: dict, fsctx: FileSystemContext) -> bool:
     for found_file in found_files:
         found_file.captures[0:0] = fsctx.captures # push all the parent FileSystemContext (the directory the file is in)
         # in the top of each found_file's captures
-        logging.debug(f"File validating: {found_file.path}, {found_file.captures}")
+        logging.debug(f"File validating: {found_file}")
         is_valid = validate(found_file, file_data['rules'])
         if not is_valid:
             return False
