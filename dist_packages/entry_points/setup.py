@@ -1,7 +1,7 @@
 import setuptools
 
 setuptools.setup(
-    name="entrypoint-package",
+    name="calculator",
     version="0.0.1",
     author="Yoav Klein",
     author_email="yoavklein25@gmail.com",
@@ -15,11 +15,11 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    packages = ["hello"],
-    python_requires=">=3.6",
+    packages = ["calculator"],
+    python_requires=">=3.8",
+    entry_points={
+        'console_scripts': [
+            'add = calculator.console:main',
+        ]
+    }
 )
-
-
-# packages=setuptools.find_packages(where="src"),
-# package_dir={"": "src"},
-    
