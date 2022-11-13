@@ -47,3 +47,23 @@ The syntax for entrypoints is as such:
 
 Package or module in our case is the module `calculator.console`
 Object in our case is the function `main`
+
+
+## Test
+
+First, create a virtual environment:
+```
+$ python3 -m venv venv
+$ source venv/bin/activate
+```
+
+Now, install the package:
+```
+$ pip install .
+```
+
+Now, run our `add` command-line tool:
+```
+$ add 4 6
+10
+```
