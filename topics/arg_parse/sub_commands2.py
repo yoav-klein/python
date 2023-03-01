@@ -1,3 +1,11 @@
+
+"""
+    This script demonstrates a more complex use-case, in which we have commands, and subcommands.
+    for example:
+    $ py elastic.py index create --name "my-index"
+    $ py elastic.py index delete --name "my-index"
+"""
+
 import argparse
 
 
